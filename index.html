@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="id" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Kabin Foto — Virtual Photobooth Studio</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts Inter & Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                        display: ['Outfit', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#fdf4f8',
+                            100: '#fbe8f2',
+                            500: '#ec4899',
+                            600: '#db2777',
+                            700: '#be185d',
+                            900: '#831843'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom styling and animation helpers */
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+        h1, h2, h3, h4, .font-display {
+            font-family: 'Outfit', sans-serif;
+        }
+        @keyframes flashAnim {
+            0% { opacity: 0; }
+            50% { opacity: 1; background-color: white; }
+            100% { opacity: 0; }
+        }
+        .animate-flash {
+            animation: flashAnim 0.35s ease-out forwards;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.03);
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(236, 72, 153, 0.3);
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(236, 72, 153, 0.6);
+        }
+        .mirror-video {
+            transform: scaleX(-1);
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-pink-50 via-purple-50 to-pink-100 min-h-full text-slate-800 flex flex-col justify-between antialiased selection:bg-pink-500 selection:text-white">
+
+    <!-- Flash Overlay Component -->
+    <div id="camera-flash" class="fixed inset-0 z-50 pointer-events-none opacity-0 bg-white"></div>
+
+    <!-- Toast Notification Message Box -->
+    <div id="toast-box" class="fixed top-5 left-1/2 transform -translate-x-1/2 z-50 transition-all duration-300 opacity-0 pointer-events-none translate-y-[-20px]">
+        <div id="toast-content" class="bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-xl flex items-center space-x-3 text-sm font-medium border border-slate-700/50">
+            <i id="toast-icon" class="fa-solid fa-info-circle text-pink-400"></i>
+            <span id="toast-message">Pesan notifikasi...</span>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="flex-1 flex flex-col max-w-md w-full mx-auto p-4 sm:p-6 justify-between">
+        
+        <!-- Header -->
+    <header class="flex items-center justify-between py-2 mb-2">
+        <div class="flex items-center space-x-2">
+            <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-pink-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-pink-500/25">
+                <i class="fa-solid fa-camera-retro text-lg"></i>
+            </div>
+            <div>
+                <h1 class="font-display font-bold text-lg leading-tight tracking-tight bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">Kabin Foto Studio</h1>
+                <p id="app-role-subtitle" class="text-xs text-slate-400 font-medium">Capture Your Moment ✨</p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-2">
+            <!-- Ping / Signal Badge -->
+            <div id="ping-badge" class="hidden items-center space-x-1 px-2.5 py-1 rounded-xl bg-slate-900/80 text-emerald-400 text-[11px] font-mono border border-slate-700">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span id="ping-text">PING: 18ms</span>
+            </div>
+            <button onclick="openCamGuideModal()" class="w-9 h-9 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200/80 shadow-sm flex items-center justify-center text-amber-600 transition hover:scale-105 active:scale-95" title="Panduan Izin Kamera">
+                <i class="fa-solid fa-video-slash text-xs"></i>
+            </button>
+            <button onclick="openInfoModal()" class="w-9 h-9 rounded-xl bg-white/85 hover:bg-white border border-slate-200/80 shadow-sm flex items-center justify-center text-slate-600 transition hover:scale-105 active:scale-95">
+                <i class="fa-solid fa-circle-question text-sm"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- APP SCREENS CONTAINER -->
+    <main class="flex-1 flex flex-col justify-center relative my-2">
+
+        <!-- ================= SCREEN 1: WELCOME & MODE SELECTION (GEN-Z VIBE) ================= -->
+        <section id="screen-welcome" class="flex flex-col items-center text-center py-4">
+            <div class="w-full max-w-xs mx-auto mb-5 relative">
+                <div class="absolute -inset-2 bg-gradient-to-r from-pink-500 to-purple-600 rounded-3xl blur-lg opacity-25 animate-pulse"></div>
+                <div class="relative bg-white p-5 rounded-3xl shadow-xl border border-pink-100/50 flex flex-col items-center">
+                    <div class="w-16 h-16 bg-pink-50 text-pink-500 rounded-2xl flex items-center justify-center text-3xl mb-3 shadow-inner">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    </div>
+                    <h2 class="font-display font-bold text-xl text-slate-900 mb-1">Siap Foto Kece? 📸</h2>
+                    <p class="text-xs text-slate-500 leading-relaxed">Pilih mode foto sesuai mood kamu! Hasil tetep jernih & HD walau jarak jauh bareng doi/bestie.</p>
+                </div>
+            </div>
+
+            <!-- Simplified Mode Selection -->
+            <div class="w-full space-y-3">
+                <!-- Option 1: Solo Vibe -->
+                <button onclick="selectMode('single')" class="w-full py-4 px-5 bg-white border-2 border-pink-200 hover:border-pink-500 text-slate-800 font-display font-semibold rounded-2xl shadow-sm hover:shadow-md hover:scale-[1.01] active:scale-[0.98] transition flex items-center justify-between group">
+                    <div class="flex items-center space-x-3.5 text-left">
+                        <div class="w-10 h-10 rounded-xl bg-pink-100 text-pink-600 flex items-center justify-center group-hover:bg-pink-500 group-hover:text-white transition">
+                            <i class="fa-solid fa-user text-base"></i>
+                        </div>
+                        <div>
+                            <div class="font-bold text-sm text-slate-900">Solo Vibe (Single Photo)</div>
+                            <div class="text-[11px] text-slate-400 font-normal">Foto sendiri, bebas ekspresi tanpa batas</div>
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-xs text-slate-400 group-hover:text-pink-500 transition"></i>
+                </button>
+
+                <!-- Option 2: Collab Photo -->
+                <button onclick="selectMode('collab')" class="w-full py-4 px-5 bg-gradient-to-r from-pink-500 to-purple-600 text-white font-display font-semibold rounded-2xl shadow-lg shadow-pink-500/25 hover:shadow-xl hover:scale-[1.01] active:scale-[0.98] transition flex items-center justify-between">
+                    <div class="flex items-center space-x-3.5 text-left">
+                        <div class="w-10 h-10 rounded-xl bg-white/20 text-white flex items-center justify-center">
+                            <i class="fa-solid fa-user-group text-base"></i>
+                        </div>
+                        <div>
+                            <div class="font-bold text-sm">Collab Photo (Bareng Bestie/LDR)</div>
+                            <div class="text-[11px] text-pink-100 font-normal">Spill link ke doi/bestie & foto 2 device real-time</div>
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-arrow-right text-xs text-pink-200"></i>
+                </button>
+            </div>
+        </section>
+
+        <!-- ================= SCREEN 2: LAYOUT & COLLAB LINK (HOST SETUP) ================= -->
+        <section id="screen-template" class="hidden flex flex-col space-y-3">
+            
+            <!-- Universal Back Button -->
+            <div class="flex items-center justify-between">
+                <button onclick="switchScreen('screen-welcome')" class="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-600 font-semibold text-xs hover:bg-slate-50 transition flex items-center space-x-1.5 shadow-sm">
+                    <i class="fa-solid fa-arrow-left"></i>
+                    <span>Kembali</span>
+                </button>
+                <span id="mode-badge-tag" class="px-3 py-1 rounded-full bg-pink-100 text-pink-600 font-bold text-[10px] uppercase tracking-wider">COLLAB MODE</span>
+            </div>
+
+            <!-- Collab Link Box (Only Shows for Collab Mode) -->
+            <div id="collab-share-card" class="bg-gradient-to-r from-slate-900 to-purple-950 p-4 rounded-2xl text-white shadow-md relative overflow-hidden">
+                <div class="flex items-center justify-between mb-1.5">
+                    <span class="text-[10px] uppercase font-bold tracking-wider text-pink-400 flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> Undangan Bestie
+                    </span>
+                    <span id="display-room-code" class="font-mono font-bold text-xs bg-white/10 px-2 py-0.5 rounded-lg border border-white/20">ROOM-782</span>
+                </div>
+                <p class="text-[11px] text-slate-300 mb-2.5">Kirim link ini ke doi/bestie kamu biar langsung join ke live cam studio:</p>
+                
+                <div class="flex items-center gap-2">
+                    <input type="text" id="share-link-input" readonly value="https://photobox.app/?room=ROOM-782" class="flex-1 bg-white/10 text-xs px-3 py-2 rounded-xl font-mono text-slate-200 border border-white/10 focus:outline-none select-all">
+                    <button onclick="copyShareLink()" class="px-3 py-2 bg-pink-500 hover:bg-pink-600 text-white rounded-xl text-xs font-semibold transition active:scale-95 flex items-center gap-1">
+                        <i class="fa-solid fa-copy"></i>
+                        <span>Salin Link</span>
+                    </button>
+                </div>
+            </div>
+
+            <div>
+                <h2 class="font-display font-bold text-base text-slate-900">Pilih Layout Frame Kece</h2>
+                <p class="text-xs text-slate-500">Tentukan bentuk strip atau grid foto kamu.</p>
+            </div>
+
+            <!-- Template Selection Cards -->
+            <div class="grid grid-cols-5 gap-1.5">
+                <!-- Option 1: Strip 4 -->
+                <div onclick="selectTemplate('strip4')" id="tpl-strip4" class="template-card cursor-pointer bg-white border-2 border-pink-500 p-2 rounded-xl shadow-sm flex flex-col items-center transition relative overflow-hidden">
+                    <div class="absolute top-1 right-1 text-pink-500 check-icon text-[10px]"><i class="fa-solid fa-circle-check"></i></div>
+                    <div class="w-5 h-12 bg-slate-100 rounded border border-slate-200 flex flex-col p-0.5 space-y-0.5 mb-1">
+                        <div class="flex-1 bg-slate-300 rounded-2xs"></div>
+                        <div class="flex-1 bg-slate-300 rounded-2xs"></div>
+                        <div class="flex-1 bg-slate-300 rounded-2xs"></div>
+                        <div class="flex-1 bg-slate-300 rounded-2xs"></div>
+                    </div>
+                    <span class="text-[10px] font-bold text-slate-700">Strip 4</span>
+                </div>
+
+                <!-- Option 2: Grid 2x2 -->
+                <div onclick="selectTemplate('grid4')" id="tpl-grid4" class="template-card cursor-pointer bg-white border-2 border-slate-200 p-2 rounded-xl shadow-sm flex flex-col items-center transition relative overflow-hidden hover:border-pink-300">
+                    <div class="absolute top-1 right-1 text-pink-500 check-icon text-[10px] hidden"><i class="fa-solid fa-circle-check"></i></div>
+                    <div class="w-10 h-10 bg-slate-100 rounded border border-slate-200 grid grid-cols-2 gap-0.5 p-0.5 mb-1">
+                        <div class="bg-slate-300 rounded-2xs"></div>
+                        <div class="bg-slate-300 rounded-2xs"></div>
+                        <div class="bg-slate-300 rounded-2xs"></div>
+                        <div class="bg-slate-300 rounded-2xs"></div>
+                    </div>
+                    <span class="text-[10px] font-bold text-slate-700">Grid 2x2</span>
+                </div>
+
+                <!-- Option 3: Polaroid Single -->
+                <div onclick="selectTemplate('polaroid')" id="tpl-polaroid" class="template-card cursor-pointer bg-white border-2 border-slate-200 p-2 rounded-xl shadow-sm flex flex-col items-center transition relative overflow-hidden hover:border-pink-300">
+                    <div class="absolute top-1 right-1 text-pink-500 check-icon text-[10px] hidden"><i class="fa-solid fa-circle-check"></i></div>
+                    <div class="w-8 h-11 bg-slate-100 rounded border border-slate-200 flex flex-col p-0.5 pb-2 space-y-0.5 mb-1">
+                        <div class="flex-1 bg-slate-300 rounded-2xs"></div>
+                        <div class="h-1 bg-slate-200 rounded-2xs"></div>
+                    </div>
+                    <span class="text-[10px] font-bold text-slate-700">Polaroid</span>
+                </div>
+
+                <!-- Option 4: 3x3 Grid -->
+                <div onclick="selectTemplate('grid9')" id="tpl-grid9" class="template-card cursor-pointer bg-white border-2 border-slate-200 p-2 rounded-xl shadow-sm flex flex-col items-center transition relative overflow-hidden hover:border-pink-300">
+                    <div class="absolute top-1 right-1 text-pink-500 check-icon text-[10px] hidden"><i class="fa-solid fa-circle-check"></i></div>
+                    <div class="w-10 h-10 bg-slate-100 rounded border border-slate-200 grid grid-cols-3 gap-0.5 p-0.5 mb-1">
+                        <div class="bg-slate-300 rounded-2xs"></div><div class="bg-slate-300 rounded-2xs"></div><div class="bg-slate-300 rounded-2xs"></div>
+                        <div class="bg-slate-300 rounded-2xs"></div><div class="bg-slate-300 rounded-2xs"></div><div class="bg-slate-300 rounded-2xs"></div>
+                        <div class="bg-slate-300 rounded-2xs"></div><div class="bg-slate-300 rounded-2xs"></div><div class="bg-slate-300 rounded-2xs"></div>
+                    </div>
+                    <span class="text-[10px] font-bold text-slate-700">Grid 3x3</span>
+                </div>
+
+                <!-- Option 5: Newspaper -->
+                <div onclick="selectTemplate('newspaper')" id="tpl-newspaper" class="template-card cursor-pointer bg-white border-2 border-slate-200 p-2 rounded-xl shadow-sm flex flex-col items-center transition relative overflow-hidden hover:border-pink-300">
+                    <div class="absolute top-1 right-1 text-pink-500 check-icon text-[10px] hidden"><i class="fa-solid fa-circle-check"></i></div>
+                    <div class="w-8 h-11 bg-amber-100 rounded border border-amber-300 flex flex-col p-0.5 space-y-0.5 mb-1">
+                        <div class="h-2.5 bg-slate-800 rounded-2xs"></div>
+                        <div class="flex-1 bg-slate-400 rounded-2xs"></div>
+                    </div>
+                    <span class="text-[9px] font-bold text-slate-700 text-center leading-tight">Newspaper</span>
+                </div>
+            </div>
+
+            <!-- Special Themed Frame Selection -->
+            <div class="bg-white p-3.5 rounded-2xl shadow-sm border border-slate-100">
+                <label class="block text-xs font-semibold text-slate-700 mb-2">Tema & Warna Frame</label>
+                <div class="grid grid-cols-3 gap-2">
+                    <button onclick="setTheme('minimal', '#ffffff', this)" class="theme-btn p-2 rounded-xl border-2 border-pink-500 bg-pink-50/50 text-slate-700 text-xs font-semibold transition text-center flex flex-col items-center" data-theme="minimal">
+                        <i class="fa-solid fa-square text-pink-500 text-sm mb-1"></i>
+                        <span>Minimal Clean</span>
+                    </button>
+                    <button onclick="setTheme('y2k', '#fdf4f8', this)" class="theme-btn p-2 rounded-xl border-2 border-slate-200 bg-white text-slate-700 text-xs font-semibold transition text-center flex flex-col items-center" data-theme="y2k">
+                        <i class="fa-solid fa-star text-purple-500 text-sm mb-1"></i>
+                        <span>Y2K Star</span>
+                    </button>
+                    <button onclick="setTheme('kpop', '#fef3c7', this)" class="theme-btn p-2 rounded-xl border-2 border-slate-200 bg-white text-slate-700 text-xs font-semibold transition text-center flex flex-col items-center" data-theme="kpop">
+                        <i class="fa-solid fa-heart text-rose-500 text-sm mb-1"></i>
+                        <span>K-Pop Neon</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Start Button -->
+            <div class="pt-1">
+                <button onclick="startCameraSession()" class="w-full py-3.5 bg-gradient-to-r from-pink-500 to-purple-600 text-white font-display font-semibold rounded-xl shadow-md text-xs hover:shadow-lg hover:scale-[1.01] active:scale-[0.98] transition flex items-center justify-center space-x-2">
+                    <span>Masuk Studio Kamera ✨</span>
+                    <i class="fa-solid fa-camera"></i>
+                </button>
+            </div>
+        </section>
+
+        <!-- ================= SCREEN 3: LIVE BOOTH (SINGLE & COLLAB CAMERA) ================= -->
+        <section id="screen-booth" class="hidden flex flex-col items-center">
+            <!-- Status Bar / Progress Indicator -->
+            <div class="w-full flex items-center justify-between mb-2 px-1">
+                <button onclick="abortSession()" class="px-2.5 py-1 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-semibold hover:bg-slate-50 transition flex items-center space-x-1 shadow-sm active:scale-95">
+                    <i class="fa-solid fa-arrow-left"></i>
+                    <span>Kembali</span>
+                </button>
+                <div class="flex items-center space-x-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping"></span>
+                    <span id="shot-counter-text" class="text-xs font-bold text-slate-700 uppercase tracking-wider">Foto 1 / 4</span>
+                </div>
+                <span id="timer-display" class="font-display font-extrabold text-sm text-pink-600">READY</span>
+            </div>
+
+            <!-- Viewfinder Split Grid (Adapts automatically to Single vs Collab Mode) -->
+            <div id="viewfinder-container" class="w-full aspect-[4/3] bg-slate-950 rounded-3xl overflow-hidden shadow-2xl relative border-4 border-white flex items-center justify-center">
+                
+                <!-- Viewfinder 1 (User Camera) -->
+                <div id="video-wrapper" class="relative w-full h-full bg-slate-900 rounded-2xl overflow-hidden flex items-center justify-center">
+                    <video id="camera-stream" autoplay playsinline muted class="w-full h-full object-cover mirror-video"></video>
+                    <span id="badge-cam-1" class="absolute top-2 left-2 px-2 py-0.5 bg-black/60 text-white rounded-md text-[10px] font-bold tracking-wider uppercase backdrop-blur-sm border border-white/20">
+                        YOU
+                    </span>
+                </div>
+
+                <!-- Viewfinder 2 (Guest Remote Stream - Hidden in Single Mode) -->
+                <div id="guest-cam-box" class="hidden relative w-full h-full bg-slate-900 rounded-2xl overflow-hidden items-center justify-center">
+                    <video id="guest-camera-stream" autoplay playsinline muted class="w-full h-full object-cover mirror-video opacity-90"></video>
+                    <span class="absolute top-2 left-2 px-2 py-0.5 bg-pink-600/80 text-white rounded-md text-[10px] font-bold tracking-wider uppercase backdrop-blur-sm border border-white/20 flex items-center gap-1">
+                        <i class="fa-solid fa-wifi text-[9px]"></i> BESTIE
+                    </span>
+                </div>
+
+                <!-- Fallback File Picker Container (If direct camera stream is blocked by mobile Chrome) -->
+                <div id="camera-fallback-box" class="absolute inset-0 bg-slate-900/95 backdrop-blur-md hidden flex-col items-center justify-center p-6 text-center z-30">
+                    <div class="w-14 h-14 rounded-2xl bg-pink-500/20 text-pink-400 flex items-center justify-center text-2xl mb-3 border border-pink-500/30">
+                        <i class="fa-solid fa-camera-rotate"></i>
+                    </div>
+                    <h3 class="font-display font-bold text-white text-base mb-1">Akses Kamera Dibatasi Browser</h3>
+                    <p class="text-xs text-slate-300 mb-4 leading-relaxed">Chrome mobile memblokir kamera langsung jika bukan HTTPS/localhost. Tenang, kamu tetap bisa upload foto instan dari galeri/kamera HP!</p>
+                    <label class="w-full py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white font-semibold rounded-xl text-xs shadow-lg cursor-pointer hover:scale-105 active:scale-95 transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-upload"></i>
+                        <span>Pilih / Ambil Foto dari HP ✨</span>
+                        <input type="file" id="fallback-file-input" accept="image/*" class="hidden" onchange="handleFallbackImageUpload(event)">
+                    </label>
+                </div>
+
+                <!-- Giant Countdown Overlay Inside Viewfinder -->
+                <div id="countdown-overlay" class="absolute inset-0 bg-black/50 backdrop-blur-[2px] flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-200 z-20">
+                    <span id="countdown-number" class="font-display font-black text-8xl text-white drop-shadow-2xl scale-75 transition-transform duration-300">3</span>
+                </div>
+
+                <!-- Filter overlay layer -->
+                <div id="filter-overlay-layer" class="absolute inset-0 pointer-events-none mix-blend-overlay opacity-10 bg-pink-500"></div>
+            </div>
+
+            <!-- Live Control Bar -->
+            <div class="w-full mt-3 flex items-center justify-between px-1 gap-2">
+                <button onclick="switchCamera()" class="w-11 h-11 rounded-2xl bg-white text-slate-700 border border-slate-200 shadow-sm flex items-center justify-center hover:bg-slate-50 transition active:scale-95" title="Putar Kamera">
+                    <i class="fa-solid fa-rotate text-sm"></i>
+                </button>
+                <button onclick="triggerManualCapture()" id="btn-snap" class="flex-1 py-3.5 bg-gradient-to-r from-pink-500 to-purple-600 text-white font-display font-bold rounded-2xl shadow-lg shadow-pink-500/30 hover:scale-105 active:scale-95 transition flex items-center justify-center space-x-2">
+                    <i class="fa-solid fa-camera-retro"></i>
+                    <span id="snap-button-text">Jepret Sekarang! ✨</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- ================= SCREEN 4: RESULT PREVIEW & SHARING ================= -->
+        <section id="screen-result" class="hidden flex flex-col items-center">
+            
+            <div class="w-full flex items-center justify-between mb-1">
+                <button onclick="resetApp()" class="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-600 font-semibold text-xs hover:bg-slate-50 transition flex items-center space-x-1 shadow-sm">
+                    <i class="fa-solid fa-arrow-left"></i>
+                    <span>Foto Ulang</span>
+                </button>
+                <h2 class="font-display font-bold text-sm text-slate-900">Hasil Foto Slay! ✨</h2>
+            </div>
+
+            <!-- Canvas Rendered Photobox Container -->
+            <div id="result-preview-container" class="w-full max-w-xs mx-auto bg-white p-3 rounded-2xl shadow-xl border border-slate-200/80 my-2 flex justify-center items-center overflow-hidden">
+                <!-- Final Canvas will be injected here -->
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="w-full space-y-2.5 mt-2">
+                <button onclick="downloadPhoto()" class="w-full py-3.5 px-6 bg-gradient-to-r from-pink-500 to-purple-600 text-white font-display font-semibold rounded-2xl shadow-lg shadow-pink-500/30 hover:scale-[1.02] active:scale-[0.98] transition flex items-center justify-center space-x-2 text-sm">
+                    <i class="fa-solid fa-download"></i>
+                    <span>Simpan Ke Galeri (HD)</span>
+                </button>
+                
+                <button onclick="sharePhoto()" class="w-full py-3 px-4 bg-white border border-slate-200 text-slate-700 font-semibold rounded-xl shadow-sm hover:bg-slate-50 transition flex items-center justify-center space-x-2 text-xs">
+                    <i class="fa-solid fa-share-nodes text-pink-500"></i>
+                    <span>Share Ke Media Sosial</span>
+                </button>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Hidden Canvas used for photo processing -->
+    <canvas id="processing-canvas" class="hidden"></canvas>
+
+    <!-- PANDUAN IZIN KAMERA BROWSER MODAL (POPUP HELP) -->
+    <div id="cam-guide-modal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in duration-200 space-y-4">
+            <div class="flex items-center justify-between border-b pb-3 border-slate-100">
+                <div class="flex items-center space-x-2">
+                    <div class="w-8 h-8 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center font-bold">
+                        <i class="fa-solid fa-video-slash text-sm"></i>
+                    </div>
+                    <h3 class="font-display font-bold text-base text-slate-900">Gagal Akses Kamera? 💡</h3>
+                </div>
+                <button onclick="closeCamGuideModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <div class="space-y-3 text-xs text-slate-600 leading-relaxed">
+                <p>Jika kamera gelap/tidak muncul, ikuti langkah cepat berikut:</p>
+                
+                <div class="bg-slate-50 p-3 rounded-2xl border border-slate-200 space-y-2">
+                    <div class="font-bold text-slate-800 flex items-center gap-1.5">
+                        <i class="fa-brands fa-chrome text-pink-500"></i> Di Mobile Browser (Chrome/Safari):
+                    </div>
+                    <ol class="list-decimal pl-4 space-y-1 text-slate-600 text-[11px]">
+                        <li>Klik ikon <strong>Kunci / Gembok / Tune 🔒</strong> di sebelah kiri alamat URL atas.</li>
+                        <li>Pilih menu <strong>Izin Situs (Permissions)</strong>.</li>
+                        <li>Ubah status <strong>Kamera (Camera)</strong> menjadi <strong>Izinkan (Allow)</strong>.</li>
+                        <li>Refresh / Muat ulang halaman web.</li>
+                    </ol>
+                </div>
+
+                <div class="bg-pink-50/50 p-3 rounded-2xl border border-pink-100 space-y-1 text-[11px] text-pink-800">
+                    <p><strong>Tips Collab:</strong> Pastikan HP Host dan Guest tidak sedang menggunakan kamera di aplikasi lain (seperti WhatsApp/Instagram) saat berfoto.</p>
+                </div>
+            </div>
+
+            <button onclick="closeCamGuideModal()" class="w-full py-3 bg-slate-900 text-white font-semibold rounded-xl text-xs hover:bg-slate-800 transition">Sip, Saya Mengerti!</button>
+        </div>
+    </div>
+
+    <!-- INFO MODAL -->
+    <div id="info-modal" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in duration-200">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center space-x-2">
+                    <div class="w-8 h-8 rounded-xl bg-pink-100 text-pink-600 flex items-center justify-center font-bold">
+                        <i class="fa-solid fa-circle-info text-sm"></i>
+                    </div>
+                    <h3 class="font-display font-bold text-base text-slate-900">Tentang Kabin Foto</h3>
+                </div>
+                <button onclick="closeInfoModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="space-y-3 text-xs text-slate-600 leading-relaxed">
+                <p><strong>Kabin Foto Studio</strong> menghadirkan pengalaman photobox estetik tanpa harus keluar rumah!</p>
+                <ul class="list-disc pl-4 space-y-1 text-slate-500">
+                    <li>Mode <strong>Solo Vibe</strong> untuk foto sendiri.</li>
+                    <li>Mode <strong>Collab Photo</strong> untuk foto bareng doi/bestie real-time via 2 HP terpisah.</li>
+                    <li>Kualitas jernih diambil langsung dari sensor kamera lokal HP masing-masing.</li>
+                </ul>
+            </div>
+            <button onclick="closeInfoModal()" class="w-full mt-5 py-3 bg-slate-900 text-white font-semibold rounded-xl text-xs hover:bg-slate-800 transition">Gas Foto!</button>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        /* ================= STATE MANAGEMENT ================= */
+        let state = {
+            mode: 'single',           // 'single' or 'collab'
+            isGuest: false,           // true if joined via invite link
+            roomCode: 'ROOM-' + Math.floor(100 + Math.random() * 900),
+            template: 'strip4',       // 'strip4', 'grid4', 'polaroid', 'grid9', 'newspaper'
+            theme: 'minimal',         // 'minimal', 'y2k', 'kpop'
+            themeColor: '#ffffff',    // Frame background color
+            totalShots: 4,            // Total shots required based on template
+            currentShotIndex: 0,      
+            capturedImagesUser: [],   
+            capturedImagesGuest: [],  
+            facingMode: 'user',       
+            stream: null,
+            useFallbackUpload: false
+        };
+
+        const videoElement = document.getElementById('camera-stream');
+        const guestVideoElement = document.getElementById('guest-camera-stream');
+        const processingCanvas = document.getElementById('processing-canvas');
+        const ctx = processingCanvas.getContext('2d');
+        
+        // Auto URL query parameter parser for Guest Invite Link
+        window.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const roomParam = urlParams.get('room');
+
+            if(roomParam) {
+                state.mode = 'collab';
+                state.isGuest = true;
+                state.roomCode = roomParam.toUpperCase();
+                showToast(`Wuu: Kamu gabung sesi Collab ${state.roomCode}! ✨`, "success");
+                
+                // Directly launch guest into camera session
+                setTimeout(() => {
+                    startCameraSession();
+                }, 800);
+            }
+        });
+
+        /* ================= MODE SELECTION LOGIC ================= */
+        function selectMode(selectedMode) {
+            state.mode = selectedMode;
+            state.isGuest = false;
+            
+            const cardLink = document.getElementById('collab-share-card');
+            const badgeTag = document.getElementById('mode-badge-tag');
+            const pingBadge = document.getElementById('ping-badge');
+
+            if(selectedMode === 'collab') {
+                cardLink.classList.remove('hidden');
+                badgeTag.textContent = "COLLAB MODE";
+                pingBadge.classList.remove('hidden');
+                pingBadge.classList.add('flex');
+                
+                document.getElementById('display-room-code').textContent = state.roomCode;
+                document.getElementById('share-link-input').value = `${window.location.origin}${window.location.pathname}?room=${state.roomCode}`;
+                startPingSimulator();
+            } else {
+                cardLink.classList.add('hidden');
+                badgeTag.textContent = "SOLO VIBE";
+                pingBadge.classList.add('hidden');
+            }
+
+            switchScreen('screen-template');
+        }
+
+        function copyShareLink() {
+            const linkInput = document.getElementById('share-link-input');
+            linkInput.select();
+            document.execCommand('copy');
+            showToast("Link Collab disalin! Langsung spill ke bestie kamu ✨", "success");
+        }
+
+        function startPingSimulator() {
+            setInterval(() => {
+                const ping = Math.floor(14 + Math.random() * 12);
+                document.getElementById('ping-text').textContent = `PING: ${ping}ms`;
+            }, 2000);
+        }
+
+        // Web Audio API Sound Synthesizer
+        let audioCtx = null;
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+        function playBeep(frequency = 440, duration = 0.1) {
+            try {
+                initAudio();
+                if (audioCtx && audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+                if (!audioCtx) return;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.value = frequency;
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            } catch (e) {
+                console.log("Audio not supported", e);
+            }
+        }
+
+        /* ================= TOAST NOTIFICATION & MODALS ================= */
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toast-box');
+            const messageEl = document.getElementById('toast-message');
+            const iconEl = document.getElementById('toast-icon');
+            
+            messageEl.textContent = message;
+            if(type === 'success') {
+                iconEl.className = 'fa-solid fa-circle-check text-emerald-400';
+            } else if(type === 'error') {
+                iconEl.className = 'fa-solid fa-circle-exclamation text-rose-400';
+            } else {
+                iconEl.className = 'fa-solid fa-info-circle text-pink-400';
+            }
+
+            toast.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-[-20px]');
+            toast.classList.add('opacity-100', 'translate-y-0');
+
+            setTimeout(() => {
+                toast.classList.remove('opacity-100', 'translate-y-0');
+                toast.classList.add('opacity-0', 'pointer-events-none', 'translate-y-[-20px]');
+            }, 3000);
+        }
+
+        function openCamGuideModal() {
+            document.getElementById('cam-guide-modal').classList.remove('hidden');
+        }
+        function closeCamGuideModal() {
+            document.getElementById('cam-guide-modal').classList.add('hidden');
+        }
+        function openInfoModal() {
+            document.getElementById('info-modal').classList.remove('hidden');
+        }
+        function closeInfoModal() {
+            document.getElementById('info-modal').classList.add('hidden');
+        }
+
+        /* ================= NAVIGATION & SCREENS ================= */
+        function switchScreen(screenId) {
+            ['screen-welcome', 'screen-template', 'screen-booth', 'screen-result'].forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
+            document.getElementById(screenId).classList.remove('hidden');
+        }
+
+        /* ================= TEMPLATE & THEME SELECTION ================= */
+        function selectTemplate(tplName) {
+            state.template = tplName;
+            if(tplName === 'strip4' || tplName === 'grid4') {
+                state.totalShots = 4;
+            } else if(tplName === 'polaroid') {
+                state.totalShots = 1;
+            } else if(tplName === 'grid9') {
+                state.totalShots = 9;
+            } else if(tplName === 'newspaper') {
+                state.totalShots = 3;
+            }
+
+            document.querySelectorAll('.template-card').forEach(card => {
+                card.classList.remove('border-pink-500', 'shadow-md');
+                card.classList.add('border-slate-200', 'shadow-sm');
+                card.querySelector('.check-icon').classList.add('hidden');
+            });
+            const activeCard = document.getElementById(`tpl-${tplName}`);
+            activeCard.classList.remove('border-slate-200', 'shadow-sm');
+            activeCard.classList.add('border-pink-500', 'shadow-md');
+            activeCard.querySelector('.check-icon').classList.remove('hidden');
+        }
+
+        function setTheme(themeName, colorHex, btnElement) {
+            state.theme = themeName;
+            state.themeColor = colorHex;
+            document.querySelectorAll('.theme-btn').forEach(btn => {
+                btn.classList.remove('border-pink-500', 'bg-pink-50/50');
+                btn.classList.add('border-slate-200', 'bg-white');
+            });
+            btnElement.classList.remove('border-slate-200', 'bg-white');
+            btnElement.classList.add('border-pink-500', 'bg-pink-50/50');
+        }
+
+        /* ================= CAMERA ACCESS & BOOTH VIEW ================= */
+        async function startCameraSession() {
+            state.currentShotIndex = 0;
+            state.capturedImagesUser = [];
+            state.capturedImagesGuest = [];
+            state.useFallbackUpload = false;
+            
+            // Clear any existing active timer to prevent auto-looping bugs
+            if (sequenceTimer) {
+                clearInterval(sequenceTimer);
+                sequenceTimer = null;
+            }
+
+            const vfContainer = document.getElementById('viewfinder-container');
+            const guestBox = document.getElementById('guest-cam-box');
+            const fallbackBox = document.getElementById('camera-fallback-box');
+            const videoWrapper = document.getElementById('video-wrapper');
+
+            fallbackBox.classList.add('hidden');
+            fallbackBox.classList.remove('flex');
+
+            if(state.mode === 'single') {
+                vfContainer.classList.remove('grid-cols-2');
+                vfContainer.classList.add('grid-cols-1');
+                guestBox.classList.add('hidden');
+                guestBox.classList.remove('flex');
+            } else {
+                vfContainer.classList.remove('grid-cols-1');
+                vfContainer.classList.add('grid-cols-2');
+                guestBox.classList.remove('hidden');
+                guestBox.classList.add('flex');
+            }
+
+            switchScreen('screen-booth');
+            
+            try {
+                if (state.stream) {
+                    state.stream.getTracks().forEach(track => track.stop());
+                }
+                const constraints = {
+                    video: { facingMode: state.facingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
+                    audio: false
+                };
+                state.stream = await navigator.mediaDevices.getUserMedia(constraints);
+                videoElement.srcObject = state.stream;
+                videoWrapper.classList.remove('hidden');
+                
+                if(state.mode === 'collab') {
+                    guestVideoElement.srcObject = state.stream;
+                }
+
+                document.getElementById('shot-counter-text').textContent = `Foto 1 / ${state.totalShots}`;
+                document.getElementById('timer-display').textContent = "SIAP";
+                document.getElementById('countdown-overlay').classList.add('opacity-0', 'pointer-events-none');
+
+            } catch (err) {
+                console.warn("Direct camera access blocked, enabling fallback upload mode:", err);
+                state.useFallbackUpload = true;
+                videoWrapper.classList.add('hidden');
+                guestBox.classList.add('hidden');
+                fallbackBox.classList.remove('hidden');
+                fallbackBox.classList.add('flex');
+                showToast("Kamera browser dibatasi, gunakan opsi Upload Foto HP.", "info");
+            }
+        }
+
+        async function switchCamera() {
+            if(state.useFallbackUpload) {
+                showToast("Mode upload aktif. Silakan pilih foto dari galeri.", "info");
+                return;
+            }
+            state.facingMode = state.facingMode === 'user' ? 'environment' : 'user';
+            
+            if(state.facingMode === 'user') {
+                videoElement.classList.add('mirror-video');
+                guestVideoElement.classList.add('mirror-video');
+            } else {
+                videoElement.classList.remove('mirror-video');
+                guestVideoElement.classList.remove('mirror-video');
+            }
+            
+            try {
+                if (state.stream) {
+                    state.stream.getTracks().forEach(track => track.stop());
+                }
+                const constraints = {
+                    video: { facingMode: state.facingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
+                    audio: false
+                };
+                state.stream = await navigator.mediaDevices.getUserMedia(constraints);
+                videoElement.srcObject = state.stream;
+                if(state.mode === 'collab') guestVideoElement.srcObject = state.stream;
+            } catch (err) {
+                showToast("Gagal memutar kamera.", "error");
+            }
+        }
+
+        function abortSession() {
+            if (sequenceTimer) {
+                clearInterval(sequenceTimer);
+                sequenceTimer = null;
+            }
+
+            const overlay = document.getElementById('countdown-overlay');
+            if (overlay) overlay.classList.add('opacity-0', 'pointer-events-none');
+
+            if (state.stream) {
+                state.stream.getTracks().forEach(track => track.stop());
+                state.stream = null;
+            }
+
+            if(state.isGuest) {
+                switchScreen('screen-welcome');
+            } else {
+                switchScreen('screen-template');
+            }
+        }
+
+        /* ================= SHOT SEQUENCE LOGIC ================= */
+        let sequenceTimer = null;
+
+        function startShotSequence() {
+            if(state.currentShotIndex >= state.totalShots) {
+                processFinalCollage();
+                return;
+            }
+
+            if(state.useFallbackUpload) {
+                showToast(`Silakan upload foto untuk bidikan ke-${state.currentShotIndex + 1}`, "info");
+                return;
+            }
+
+            document.getElementById('shot-counter-text').textContent = `Foto ${state.currentShotIndex + 1} / ${state.totalShots}`;
+            
+            let countdown = 3;
+            const overlay = document.getElementById('countdown-overlay');
+            const numEl = document.getElementById('countdown-number');
+            
+            overlay.classList.remove('opacity-0', 'pointer-events-none');
+            numEl.textContent = countdown;
+            numEl.classList.remove('scale-75');
+            numEl.classList.add('scale-100');
+            playBeep(350, 0.1);
+
+            if (sequenceTimer) clearInterval(sequenceTimer);
+
+            sequenceTimer = setInterval(() => {
+                countdown--;
+                if(countdown > 0) {
+                    numEl.textContent = countdown;
+                    playBeep(350, 0.1);
+                } else if(countdown === 0) {
+                    numEl.textContent = "SMILE! 📸";
+                    playBeep(880, 0.3);
+                } else {
+                    clearInterval(sequenceTimer);
+                    sequenceTimer = null;
+                    
+                    overlay.classList.add('opacity-0', 'pointer-events-none');
+                    numEl.classList.remove('scale-100');
+                    numEl.classList.add('scale-75');
+                    
+                    executeDualCaptureShot();
+                }
+            }, 1000);
+        }
+
+        function triggerManualCapture() {
+            if(state.useFallbackUpload) {
+                document.getElementById('fallback-file-input').click();
+                return;
+            }
+            if (!sequenceTimer) {
+                startShotSequence();
+            }
+        }
+
+        function handleFallbackImageUpload(event) {
+            const file = event.target.files[0];
+            if(!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    processingCanvas.width = 800;
+                    processingCanvas.height = 600;
+                    ctx.drawImage(img, 0, 0, img.width, img.height, 0, 0, 800, 600);
+                    const imageUrl = processingCanvas.toDataURL('image/jpeg', 0.95);
+                    
+                    state.capturedImagesUser.push(imageUrl);
+                    if(state.mode === 'collab') {
+                        state.capturedImagesGuest.push(imageUrl);
+                    }
+
+                    state.currentShotIndex++;
+                    document.getElementById('shot-counter-text').textContent = `Foto ${state.currentShotIndex} / ${state.totalShots}`;
+
+                    if(state.currentShotIndex < state.totalShots) {
+                        showToast(`Foto ${state.currentShotIndex} tersimpan! Upload foto berikutnya.`, "success");
+                        event.target.value = '';
+                    } else {
+                        showToast("Semua foto berhasil diunggah! ✨", "success");
+                        processFinalCollage();
+                    }
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function executeDualCaptureShot() {
+            const flash = document.getElementById('camera-flash');
+            flash.classList.remove('animate-flash');
+            void flash.offsetWidth;
+            flash.classList.add('animate-flash');
+            playBeep(1200, 0.15);
+
+            const vWidth = videoElement.videoWidth;
+            const vHeight = videoElement.videoHeight;
+
+            if(!vWidth || !vHeight) {
+                showToast("Kamera belum siap sepenuhnya.", "error");
+                return;
+            }
+
+            // Capture Frame User
+            processingCanvas.width = 800;
+            processingCanvas.height = 600;
+
+            ctx.save();
+            if(state.facingMode === 'user') ctx.scale(-1, 1);
+            ctx.drawImage(videoElement, 0, 0, vWidth, vHeight, state.facingMode === 'user' ? -800 : 0, 0, 800, 600);
+            ctx.restore();
+            const userImgUrl = processingCanvas.toDataURL('image/jpeg', 0.95);
+            state.capturedImagesUser.push(userImgUrl);
+
+            // Capture Frame Guest if Collab Mode
+            if(state.mode === 'collab') {
+                ctx.save();
+                if(state.facingMode === 'user') ctx.scale(-1, 1);
+                ctx.drawImage(guestVideoElement, 0, 0, vWidth, vHeight, state.facingMode === 'user' ? -800 : 0, 0, 800, 600);
+                ctx.restore();
+                const guestImgUrl = processingCanvas.toDataURL('image/jpeg', 0.95);
+                state.capturedImagesGuest.push(guestImgUrl);
+            }
+
+            state.currentShotIndex++;
+
+            setTimeout(() => {
+                if(state.currentShotIndex < state.totalShots) {
+                    startShotSequence();
+                } else {
+                    if (state.stream) {
+                        state.stream.getTracks().forEach(track => track.stop());
+                    }
+                    processFinalCollage();
+                }
+            }, 600);
+        }
+
+        /* ================= FINAL COLLAGE RENDERING ================= */
+        function processFinalCollage() {
+            switchScreen('screen-result');
+            
+            const container = document.getElementById('result-preview-container');
+            container.innerHTML = '';
+
+            const canvas = document.createElement('canvas');
+            const cCtx = canvas.getContext('2d');
+
+            // Set dimensions based on template
+            if (state.template === 'strip4') {
+                canvas.width = 600;
+                canvas.height = 1800;
+            } else if (state.template === 'grid4') {
+                canvas.width = 1000;
+                canvas.height = 1000;
+            } else if (state.template === 'polaroid') {
+                canvas.width = 800;
+                canvas.height = 1000;
+            } else if (state.template === 'grid9') {
+                canvas.width = 1000;
+                canvas.height = 1000;
+            } else if (state.template === 'newspaper') {
+                canvas.width = 1200;
+                canvas.height = 1697;
+            } else {
+                canvas.width = 800;
+                canvas.height = 1200;
+            }
+
+            // Fill background based on theme
+            cCtx.fillStyle = state.themeColor;
+            cCtx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw theme decorations
+            if (state.theme === 'y2k') {
+                cCtx.fillStyle = 'rgba(168, 85, 247, 0.15)';
+                cCtx.beginPath();
+                cCtx.arc(100, 100, 80, 0, Math.PI * 2);
+                cCtx.fill();
+            }
+
+            // Helper function to load image
+            const loadImage = (src) => {
+                return new Promise((resolve) => {
+                    const img = new Image();
+                    img.crossOrigin = 'anonymous';
+                    img.onload = () => resolve(img);
+                    img.src = src;
+                });
+            };
+
+            (async () => {
+                if (state.template === 'strip4') {
+                    const padding = 40;
+                    const slotW = canvas.width - (padding * 2);
+                    const slotH = (canvas.height - (padding * 5)) / 4;
+
+                    for (let i = 0; i < state.capturedImagesUser.length; i++) {
+                        const img = await loadImage(state.capturedImagesUser[i]);
+                        const y = padding + (i * (slotH + padding));
+                        cCtx.drawImage(img, padding, y, slotW, slotH);
+                    }
+                } else if (state.template === 'grid4') {
+                    const padding = 40;
+                    const slotW = (canvas.width - (padding * 3)) / 2;
+                    const slotH = (canvas.height - (padding * 3)) / 2;
+
+                    for (let i = 0; i < state.capturedImagesUser.length; i++) {
+                        const img = await loadImage(state.capturedImagesUser[i]);
+                        const col = i % 2;
+                        const row = Math.floor(i / 2);
+                        const x = padding + (col * (slotW + padding));
+                        const y = padding + (row * (slotH + padding));
+                        cCtx.drawImage(img, x, y, slotW, slotH);
+                    }
+                } else if (state.template === 'polaroid') {
+                    const padding = 60;
+                    const slotW = canvas.width - (padding * 2);
+                    const slotH = canvas.height - 350;
+                    
+                    cCtx.fillStyle = '#ffffff';
+                    cCtx.shadowColor = 'rgba(0,0,0,0.15)';
+                    cCtx.shadowBlur = 30;
+                    cCtx.fillRect(padding, padding, slotW, slotH + 200);
+                    cCtx.shadowBlur = 0;
+
+                    if (state.capturedImagesUser[0]) {
+                        const img = await loadImage(state.capturedImagesUser[0]);
+                        cCtx.drawImage(img, padding + 30, padding + 30, slotW - 60, slotH - 40);
+                    }
+
+                    cCtx.fillStyle = '#1e293b';
+                    cCtx.font = 'bold 36px Outfit, sans-serif';
+                    cCtx.textAlign = 'center';
+                    cCtx.fillText("Kabin Foto Studio ✨", canvas.width / 2, canvas.height - 130);
+                    cCtx.font = '24px Plus Jakarta Sans, sans-serif';
+                    cCtx.fillStyle = '#64748b';
+                    cCtx.fillText(new Date().toLocaleDateString(), canvas.width / 2, canvas.height - 80);
+                } else if (state.template === 'grid9') {
+                    const padding = 30;
+                    const slotW = (canvas.width - (padding * 4)) / 3;
+                    const slotH = (canvas.height - (padding * 4)) / 3;
+
+                    for (let i = 0; i < Math.min(state.capturedImagesUser.length, 9); i++) {
+                        const img = await loadImage(state.capturedImagesUser[i]);
+                        const col = i % 3;
+                        const row = Math.floor(i / 3);
+                        const x = padding + (col * (slotW + padding));
+                        const y = padding + (row * (slotH + padding));
+                        cCtx.drawImage(img, x, y, slotW, slotH);
+                    }
+                } else {
+                    // Default fallback single
+                    if (state.capturedImagesUser[0]) {
+                        const img = await loadImage(state.capturedImagesUser[0]);
+                        cCtx.drawImage(img, 50, 50, canvas.width - 100, canvas.height - 100);
+                    }
+                }
+
+                // Append generated canvas preview to UI
+                canvas.className = "max-h-[380px] w-auto h-auto rounded-xl shadow-md border border-slate-100 object-contain";
+                container.appendChild(canvas);
+                state.renderedCanvasElement = canvas;
+            })();
+        }
+
+        function downloadPhoto() {
+            if (!state.renderedCanvasElement) {
+                showToast("Belum ada foto yang dirender.", "error");
+                return;
+            }
+            const link = document.createElement('a');
+            link.download = `kabin-foto-${Date.now()}.png`;
+            link.href = state.renderedCanvasElement.toDataURL('image/png', 1.0);
+            link.click();
+            showToast("Berhasil simpan ke galeri! ✨", "success");
+        }
+
+        function sharePhoto() {
+            if (navigator.share && state.renderedCanvasElement) {
+                state.renderedCanvasElement.toBlob(blob => {
+                    const file = new File([blob], "kabin-foto.png", { type: "image/png" });
+                    navigator.share({
+                        title: 'Kabin Foto Studio',
+                        text: 'Nih hasil foto estetik kita hari ini! ✨',
+                        files: [file]
+                    }).catch(() => {});
+                });
+            } else {
+                showToast("Fitur share disalin otomatis.", "info");
+                downloadPhoto();
+            }
+        }
+
+        function resetApp() {
+            switchScreen('screen-welcome');
+        }
+    </script>
+</body>
+</html>
